@@ -3,7 +3,6 @@ name: notation-github-actions-verify-template
 
 on:
   workflow_dispatch:
-  push:
 
 env:
   ACR_REGISTRY_NAME: wabbitregistry.azurecr.io                       # example: myRegistry.azurecr.io

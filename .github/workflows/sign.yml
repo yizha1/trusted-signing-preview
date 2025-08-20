@@ -73,8 +73,8 @@ jobs:
           timestamp_url: ${{ env.TSA_URL}}
           timestamp_root_cert: ${{env.TSA_ROOT_CERT }}
           plugin_name: ${{ env.PLUGIN_NAME }}
-          plugin_url: $${{ env.PLUGIN_DOWNLOAD_URL }} https://github.com/Azure/notation-azure-kv/releases/download/v1.1.0/notation-azure-kv_1.1.0_linux_amd64.tar.gz
-          plugin_checksum: $${{ env.PLUGIN_CHECKSUM }} 2fc959bf850275246b044203609202329d015005574fabbf3e6393345e49b884
+          plugin_url: $${{ env.PLUGIN_DOWNLOAD_URL }}
+          plugin_checksum: $${{ env.PLUGIN_CHECKSUM }}
           key_id: ${{ env.TS_CERT_PROFILE }}
           target_artifact_reference: ${{ env.target_artifact_reference }}
           signature_format: cose

@@ -31,7 +31,7 @@ jobs:
       - name: prepare
         id: prepare
         run: |
-          echo "target_artifact_reference=${{ env.ACR_REGISTRY_NAME }}/${{ env.ACR_REPO_NAME }}:${TAG}" >> "$GITHUB_ENV"
+          echo "target_artifact_reference=${{ env.ACR_REGISTRY_NAME }}/${{ env.ACR_REPO_NAME }}:${{ env.TAG }}" >> "$GITHUB_ENV"
       
       # Log in to Azure with your service principal secret
       # - name: Azure login

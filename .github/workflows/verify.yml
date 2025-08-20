@@ -2,19 +2,20 @@
 name: notation-github-actions-verify-template
 
 on:
+  workflow_dispatch:
   push:
 
 env:
-  ACR_REGISTRY_NAME: <registry_name_of_your_ACR>                       # example: myRegistry.azurecr.io
-  ACR_REPO_NAME: <repository_name_of_your_ACR>                         # example: myRepo
-  target_artifact_reference: <ACR_REGISTRY_NAME/ACR_REPO_NAME@digest>  # example: myRegistry.azurecr.io/myRepo@sha256:abcdef
-
+  ACR_REGISTRY_NAME: wabbitregistry.azurecr.io                       # example: myRegistry.azurecr.io
+  ACR_REPO_NAME: hello-world
+  Tag: v1                                                            # example: myRepo
+                                                                     # example: myRegistry.azurecr.io/myRepo@sha256:abcdef
 jobs:
   notation-verify:
     runs-on: ubuntu-latest
     permissions:
+      id-token: write
       contents: read
-      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -38,12 +39,12 @@ jobs:
 
       # Install Notation CLI, the default version is "1.1.0"
       - name: setup notation
-        uses: notaryproject/notation-action/setup@v1
+        uses: notaryproject/notation-action/setup@v1.2.2
       
       # Verify the OCI artifact
       - name: verify OCI artifact
         uses: notaryproject/notation-action/verify@v1
         with:
-          target_artifact_reference: ${{ env.target_artifact_reference }}
+          target_artifact_reference: ${{ env.ACR_REGISTRY_NAME }}/${{ env.ACR_REPO_NAME }}:${{ env.Tag }}
           trust_policy: .github/trustpolicy/trustpolicy.json
           trust_store: .github/truststore

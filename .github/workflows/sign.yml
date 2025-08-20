@@ -9,8 +9,8 @@ env:
   ACR_REPO_NAME: hello-world                            # example: myRepo
   TAG: v1
   PLUGIN_NAME: azure-trustedsigning                     # DO NOT CHANGE
-  PLUGIN_DOWNLOAD_URL: https://github.com/Azure/notation-azure-kv/releases/download/v1.1.0/notation-azure-kv_1.1.0_linux_amd64.tar.gz
-  PLUGIN_CHECKSUM: 2fc959bf850275246b044203609202329d015005574fabbf3e6393345e49b884
+  PLUGIN_DOWNLOAD_URL: "https://raw.githubusercontent.com/yizha1/image-integrity/main/.github/plugin/notation-azure-trustedsigning_0.3.0-beta.1_linux_amd64.tar.gz"
+  PLUGIN_CHECKSUM: 808b7fa45cfca0a0f400db33958a3d6aca37a73df2e77008fe149314344bfd11
   TSA_URL: http://timestamp.acs.microsoft.com/
   TSA_ROOT_CERT: .github/certs/msft-identity-verification-root-cert-authority-2020.crt
   TS_ACCOUNT_NAME: "yizha1-ts"                          # example: myAccount

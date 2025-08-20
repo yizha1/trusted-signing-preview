@@ -3,11 +3,15 @@ name: sign-notation-trusted-signing
 
 on:
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag to build'
+        required: true
+        default: 'v1'
   
 env:
   ACR_REGISTRY_NAME: wabbitregistry.azurecr.io          # example: myRegistry.azurecr.io
   ACR_REPO_NAME: hello-world                            # example: myRepo
-  TAG: v1
   PLUGIN_NAME: azure-trustedsigning                     # DO NOT CHANGE
   PLUGIN_DOWNLOAD_URL: "https://raw.githubusercontent.com/yizha1/image-integrity/main/.github/plugin/notation-azure-trustedsigning_0.3.0-beta.1_linux_amd64.tar.gz"
   PLUGIN_CHECKSUM: 808b7fa45cfca0a0f400db33958a3d6aca37a73df2e77008fe149314344bfd11
@@ -31,7 +35,7 @@ jobs:
       - name: prepare
         id: prepare
         run: |
-          echo "target_artifact_reference=${{ env.ACR_REGISTRY_NAME }}/${{ env.ACR_REPO_NAME }}:${{ env.TAG }}" >> "$GITHUB_ENV"
+          echo "target_artifact_reference=${{ env.ACR_REGISTRY_NAME }}/${{ env.ACR_REPO_NAME }}:${{ github.event.inputs.image_tag }}" >> "$GITHUB_ENV"
       
       # Log in to Azure with your service principal secret
       # - name: Azure login
@@ -59,7 +63,7 @@ jobs:
           push: true
           tags: ${{ env.target_artifact_reference }}
           build-args: |
-            IMAGE_TAG={{ env.TAG }}
+            IMAGE_TAG={{ github.event.inputs.image_tag }}
       # Get the manifest digest of the OCI artifact
       - name: Retrieve digest
         run: |

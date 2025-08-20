@@ -3,6 +3,11 @@ name: notation-github-actions-verify-template
 
 on:
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag to verify'
+        required: true
+        default: 'v1'
 
 env:
   ACR_REGISTRY_NAME: wabbitregistry.azurecr.io                       # example: myRegistry.azurecr.io
@@ -44,6 +49,6 @@ jobs:
       - name: verify OCI artifact
         uses: notaryproject/notation-action/verify@v1
         with:
-          target_artifact_reference: ${{ env.ACR_REGISTRY_NAME }}/${{ env.ACR_REPO_NAME }}:${{ env.Tag }}
+          target_artifact_reference: ${{ env.ACR_REGISTRY_NAME }}/${{ env.ACR_REPO_NAME }}:${{ github.event.inputs.image_tag }}
           trust_policy: .github/trustpolicy/trustpolicy.json
           trust_store: .github/truststore

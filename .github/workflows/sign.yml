@@ -33,17 +33,17 @@ jobs:
           echo "target_artifact_reference=${{ env.ACR_REGISTRY_NAME }}/${{ env.ACR_REPO_NAME }}:${TAG}" >> "$GITHUB_ENV"
       
       # Log in to Azure with your service principal secret
-      - name: Azure login
-        uses: Azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-      # If you are using OIDC and federated credential, make sure to replace the above step with below:
       # - name: Azure login
-      #   uses: Azure/login@v1
-      #   with:
-      #     client-id: ${{ secrets.AZURE_CLIENT_ID }}
-      #     tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-      #     subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      #  uses: Azure/login@v1
+      #  with:
+      #    creds: ${{ secrets.AZURE_CREDENTIALS }}
+      # If you are using OIDC and federated credential, make sure to replace the above step with below:
+      - name: Azure login
+        uses: Azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       # Log in to your ACR registry
       - name: ACR login

@@ -12,7 +12,7 @@ env:
   PLUGIN_DOWNLOAD_URL: https://github.com/Azure/notation-azure-kv/releases/download/v1.1.0/notation-azure-kv_1.1.0_linux_amd64.tar.gz
   PLUGIN_CHECKSUM: 2fc959bf850275246b044203609202329d015005574fabbf3e6393345e49b884
   TSA_URL: http://timestamp.acs.microsoft.com/
-  TSA_ROOT_CERT: 
+  TSA_ROOT_CERT: .github/certs/msft-identity-verification-root-cert-authority-2020.crt
   TS_ACCOUNT_NAME: "yizha1-ts"                          # example: myAccount
   TS_CERT_PROFILE: "yizha1-cert-profile"                # example: myCertProfile
   TS_BASE_URL: "https://eus.codesigning.azure.net/"     # example: https://eus.codesigning.azure.net/

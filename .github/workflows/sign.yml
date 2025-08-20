@@ -1,0 +1,78 @@
+# Build and push an image to ACR, setup notation and sign the image
+name: sign-notation-trusted-signing
+
+on:
+  push:
+
+env:
+  ACR_REGISTRY_NAME: wabbitregistry.azurecr.io          # example: myRegistry.azurecr.io
+  ACR_REPO_NAME: net-monitor                            # example: myRepo
+  TAG: v1
+  TS_ACCOUNT_NAME: "yizha1-ts"
+  TS_CERT_PROFILE: "yizha1-cert-profile"                # example: 
+  TS_BASE_URL: "https://eus.codesigning.azure.net/"
+  NOTATION_EXPERIMENTAL: 1                              # [Optional] when set, use Referrers API in the workflow (Recommended)
+
+jobs:
+  notation-sign:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: prepare
+        id: prepare
+        run: |
+          echo "target_artifact_reference=${{ env.ACR_REGISTRY_NAME }}/${{ env.ACR_REPO_NAME }}:${TAG}" >> "$GITHUB_ENV"
+      
+      # Log in to Azure with your service principal secret
+      - name: Azure login
+        uses: Azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      # If you are using OIDC and federated credential, make sure to replace the above step with below:
+      # - name: Azure login
+      #   uses: Azure/login@v1
+      #   with:
+      #     client-id: ${{ secrets.AZURE_CLIENT_ID }}
+      #     tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+      #     subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Log in to your ACR registry
+      - name: ACR login
+        run: |
+            az acr login --name ${{ env.ACR_REGISTRY_NAME }}
+      # Build and push an image to the registry
+      # Use `Dockerfile` as an example to build an image
+      - name: Build and push
+        id: push
+        uses: docker/build-push-action@v4
+        with:
+          push: true
+          tags: ${{ env.target_artifact_reference }}
+      # Get the manifest digest of the OCI artifact
+      - name: Retrieve digest
+        run: |
+          echo "target_artifact_reference=${{ env.ACR_REGISTRY_NAME }}/${{ env.ACR_REPO_NAME }}@${{ steps.push.outputs.digest }}" >> "$GITHUB_ENV"
+      
+      # Install Notation CLI with the default version "1.0.0"
+      - name: setup notation
+        uses: notaryproject/notation-action/setup@v1
+      
+      # Sign your OCI artifact using private key stored in AKV
+      - name: sign OCI artifact using key pair from AKV
+        uses: notaryproject/notation-action/sign@v1
+        with:
+          plugin_name: azure-trustedsigning
+          plugin_url: https://github.com/Azure/notation-azure-kv/releases/download/v1.1.0/notation-azure-kv_1.1.0_linux_amd64.tar.gz
+          plugin_checksum: 2fc959bf850275246b044203609202329d015005574fabbf3e6393345e49b884
+          key_id: ${{ env.TS_CERT_PROFILE }}
+          target_artifact_reference: ${{ env.target_artifact_reference }}
+          signature_format: cose
+          plugin_config: |-
+            accountName=${{ env.TS_ACCOUNT_NAME }}
+            baseUrl=${{ env.TS_BASE_URL }}
+            certProfile=${{ env.TS_CERT_PROFILE }}
+          allow_referrers_api: 'true'

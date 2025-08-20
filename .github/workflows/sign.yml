@@ -4,9 +4,6 @@ name: sign-notation-trusted-signing
 on:
   workflow_dispatch:
   push:
-
-permissions:
-  id-token: write
   
 env:
   ACR_REGISTRY_NAME: wabbitregistry.azurecr.io          # example: myRegistry.azurecr.io
@@ -26,6 +23,7 @@ jobs:
   notation-sign:
     runs-on: ubuntu-latest
     permissions:
+      id-token: write
       contents: read
       packages: write
     steps:

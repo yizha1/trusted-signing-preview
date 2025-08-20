@@ -59,7 +59,7 @@ jobs:
           push: true
           tags: ${{ env.target_artifact_reference }}
           build-args: |
-            IMAGE_TAG= {{ env.TAG }}
+            IMAGE_TAG={{ env.TAG }}
       # Get the manifest digest of the OCI artifact
       - name: Retrieve digest
         run: |

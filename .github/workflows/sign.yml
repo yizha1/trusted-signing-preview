@@ -75,8 +75,8 @@ jobs:
           timestamp_url: ${{ env.TSA_URL}}
           timestamp_root_cert: ${{env.TSA_ROOT_CERT }}
           plugin_name: ${{ env.PLUGIN_NAME }}
-          plugin_url: $${{ env.PLUGIN_DOWNLOAD_URL }}
-          plugin_checksum: $${{ env.PLUGIN_CHECKSUM }}
+          plugin_url: ${{ env.PLUGIN_DOWNLOAD_URL }}
+          plugin_checksum: ${{ env.PLUGIN_CHECKSUM }}
           key_id: ${{ env.TS_CERT_PROFILE }}
           target_artifact_reference: ${{ env.target_artifact_reference }}
           signature_format: cose

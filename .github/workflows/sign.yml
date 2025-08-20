@@ -83,4 +83,4 @@ jobs:
             accountName=${{ env.TS_ACCOUNT_NAME }}
             baseUrl=${{ env.TS_BASE_URL }}
             certProfile=${{ env.TS_CERT_PROFILE }}
-          force_referrers_tag: 'true'
+      #    force_referrers_tag: 'true'

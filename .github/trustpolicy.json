@@ -1,0 +1,16 @@
+{
+ "version": "1.0",
+ "trustPolicies": [
+    {
+         "name": "myocipolicy",
+         "registryScopes": [ "wabbitregistry.azurecr.io/net-monitor","wabbitregistry.azurecr.io/hello-world" ],
+         "signatureVerification": {
+             "level" : "strict"
+         },
+         "trustStores": [ "ca:mycerts", "tsa:mytsacerts" ],
+         "trustedIdentities": [
+	     "x509.subject: CN=microsoft.onmicrosoft.com, O=microsoft.onmicrosoft.com, OU=cnsr, S=Washington, C=US"
+         ]
+     }
+ ]
+}

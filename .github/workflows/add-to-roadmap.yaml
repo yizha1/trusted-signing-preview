@@ -1,4 +1,4 @@
-name: Add roadmap issues to yizha1roadmap project
+name: Add roadmap issues to user Project (v2)
 
 on:
   issues:
@@ -9,22 +9,24 @@ on:
         description: Issue number to add manually
         required: false
 
+# Minimal permissions for the built-in GITHUB_TOKEN used in read/comment steps
 permissions:
   contents: read
   issues: read
 
 jobs:
   add-to-project:
+    # Run if "roadmap" label added OR manual dispatch provided an issue #
     if: |
       (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'roadmap')) ||
       (github.event_name == 'workflow_dispatch' && inputs.issue != '')
     runs-on: ubuntu-latest
 
     env:
-      # CHANGE these two to your setup; this avoids hardcoding the PVT_ id
-      USER_LOGIN: yizha1          # your GitHub username (project owner)
-      PROJECT_NUMBER: "1"         # the visible project number in the URL
-      TARGET_STATUS: Todo         # optional: status option to set after adding
+      # 🔧 Change these to YOUR setup
+      USER_LOGIN: yizha1          # the project owner (your GitHub username)
+      PROJECT_NUMBER: "1"         # the visible number in the Project URL
+      TARGET_STATUS: Todo         # optional: Status option to set (must exist)
 
     steps:
       - name: Resolve ProjectV2 node ID from number
@@ -33,34 +35,38 @@ jobs:
         with:
           github-token: ${{ secrets.PROJECTS_TOKEN }}   # PAT with Projects:RW
           script: |
-            const login = process.env.USER_LOGIN;
+            const login  = process.env.USER_LOGIN;
             const number = parseInt(process.env.PROJECT_NUMBER, 10);
+
             const query = `
               query($login:String!, $number:Int!) {
                 user(login:$login) {
                   projectV2(number:$number) { id title }
                 }
               }`;
+
             const resp = await github.graphql(query, { login, number });
-            const id = resp?.user?.projectV2?.id;
-            if (!id) core.setFailed(`Could not find ProjectV2 for user=${login} number=${number}`);
-            core.setOutput('project_id', id);
-            core.info(`Project resolved: ${resp.user.projectV2.title} (${id})`);
+            const project = resp?.user?.projectV2;
+            if (!project?.id) core.setFailed(`Could not find ProjectV2 for user=${login} number=${number}`);
+            core.setOutput('project_id', project.id);
+            core.info(`Project resolved: ${project.title} (${project.id})`);
 
       - name: Resolve issue node ID
         id: issue
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}      # built-in token OK for reading issues
           script: |
             let issueNumber = (context.eventName === 'workflow_dispatch')
               ? parseInt(core.getInput('issue'), 10)
               : context.payload.issue.number;
+
             const { data: issue } = await github.rest.issues.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issueNumber
             });
+
             core.setOutput('number', String(issueNumber));
             core.setOutput('node_id', issue.node_id);
 
@@ -70,19 +76,27 @@ jobs:
         env:
           PROJECT_ID: ${{ steps.proj.outputs.project_id }}
         with:
-          github-token: ${{ secrets.PROJECTS_TOKEN }}  # PAT with Projects:RW
+          github-token: ${{ secrets.PROJECTS_TOKEN }}     # PAT with Projects:RW
           script: |
-            const projectId = process.env.PROJECT_ID;
+            const projectId   = process.env.PROJECT_ID;
             const issueNodeId = "${{ steps.issue.outputs.node_id }}";
+
             const mutation = `
               mutation($project:ID!, $content:ID!) {
                 addProjectV2ItemById(input:{ projectId:$project, contentId:$content }) {
                   item { id }
                 }
               }`;
-            const result = await github.graphql(mutation, { project: projectId, content: issueNodeId });
-            core.setOutput('item_id', result.addProjectV2ItemById.item.id);
-            core.info(`Added item: ${JSON.stringify(result)}`);
+
+            try {
+              const result = await github.graphql(mutation, { project: projectId, content: issueNodeId });
+              const itemId = result?.addProjectV2ItemById?.item?.id;
+              if (!itemId) core.setFailed('Project item was not returned.');
+              core.setOutput('item_id', itemId);
+              core.info(`Added project item: ${itemId}`);
+            } catch (e) {
+              core.setFailed(`Failed to add to Project: ${e.message}`);
+            }
 
       - name: Set Status field (optional)
         if: steps.add.outputs.item_id != '' && env.TARGET_STATUS != ''
@@ -90,68 +104,11 @@ jobs:
         env:
           PROJECT_ID: ${{ steps.proj.outputs.project_id }}
         with:
-          github-token: ${{ secrets.PROJECTS_TOKEN }}  # same PAT
+          github-token: ${{ secrets.PROJECTS_TOKEN }}     # PAT with Projects:RW
           script: |
-            const projectId = process.env.PROJECT_ID;
-            const itemId = "${{ steps.add.outputs.item_id }}";
-            const targetStatus = process.env.TARGET_STATUS;
+            const projectId   = process.env.PROJECT_ID;
+            const itemId      = "${{ steps.add.outputs.item_id }}";
+            const targetLabel = process.env.TARGET_STATUS;
 
-            // 1) Fetch fields and find 'Status' + option id
+            // 1) Fetch fields; find 'Status' + option id
             const fieldsQuery = `
-              query($project:ID!) {
-                node(id:$project) {
-                  ... on ProjectV2 {
-                    fields(first:50) {
-                      nodes {
-                        ... on ProjectV2SingleSelectField {
-                          id name options { id name }
-                        }
-                      }
-                    }
-                  }
-                }
-              }`;
-            const f = await github.graphql(fieldsQuery, { project: projectId });
-            const statusField = f.node.fields.nodes.find(n => n?.name === 'Status' && n?.options);
-            if (!statusField) {
-              core.info('No Status field found; skipping.');
-              return;
-            }
-            const opt = statusField.options.find(o => o.name === targetStatus);
-            if (!opt) {
-              core.info(`Status '${targetStatus}' not found. Options: ${statusField.options.map(o=>o.name).join(', ')}`);
-              return;
-            }
-
-            // 2) Update Status
-            const updateMutation = `
-              mutation($project:ID!, $item:ID!, $field:ID!, $option:String!) {
-                updateProjectV2ItemFieldValue(
-                  input:{
-                    projectId:$project,
-                    itemId:$item,
-                    fieldId:$field,
-                    value:{ singleSelectOptionId:$option }
-                  }
-                ) { projectV2Item { id } }
-              }`;
-            await github.graphql(updateMutation, {
-              project: projectId, item: itemId, field: statusField.id, option: opt.id
-            });
-            core.info(`Status set to '${targetStatus}'.`);
-
-      - name: Comment confirmation
-        uses: actions/github-script@v7
-        env:
-          PROJECT_ID: ${{ steps.proj.outputs.project_id }}
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: parseInt("${{ steps.issue.outputs.number }}", 10),
-              body: `✅ Added to Project (ID: ${process.env.PROJECT_ID})` +
-                    (process.env.TARGET_STATUS ? `, Status: **${process.env.TARGET_STATUS}**.` : '.')
-            })
-

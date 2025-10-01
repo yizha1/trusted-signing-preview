@@ -21,7 +21,7 @@ jobs:
       (github.event_name == 'workflow_dispatch' && inputs.issue != '')
     runs-on: ubuntu-latest
     env:
-      PROJECT_V2_ID: PVT_kwHOBm66KM4ADZpE
+      PROJECT_V2_ID: PVT_kwHOBm66KM4BEdep
       TARGET_STATUS: Todo    # change to your actual Status option
     steps:
       - name: Resolve issue node ID

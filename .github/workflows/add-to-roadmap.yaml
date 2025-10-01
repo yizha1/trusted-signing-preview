@@ -45,7 +45,7 @@ jobs:
         id: add
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}  # <-- your PAT with Projects: Read & write
+          github-token: ${{ secrets.PROJECTS_TOKEN }}  # <-- your PAT with Projects: Read & write
           script: |
             const projectId = process.env.PROJECT_V2_ID;
             const issueNodeId = "${{ steps.issue.outputs.node_id }}";

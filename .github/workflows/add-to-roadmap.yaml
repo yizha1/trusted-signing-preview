@@ -112,6 +112,6 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: parseInt("${{ steps.issue.outputs.number }}", 10),
-              body: `✅ Added to Project (ID: ${process.env.PROJECT_V2_NAME})` +
+              body: `✅ Added to Project (Name: ${process.env.PROJECT_V2_NAME})` +
                     (process.env.TARGET_STATUS ? `, Status: **${process.env.TARGET_STATUS}**.` : '.')
             })

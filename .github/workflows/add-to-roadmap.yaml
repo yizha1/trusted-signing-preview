@@ -9,7 +9,6 @@ on:
         description: Issue number to add manually
         required: false
 
-# remove the invalid 'projects' key; leave minimal required perms for GITHUB_TOKEN
 permissions:
   contents: read
   issues: read
@@ -20,15 +19,39 @@ jobs:
       (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'roadmap')) ||
       (github.event_name == 'workflow_dispatch' && inputs.issue != '')
     runs-on: ubuntu-latest
+
     env:
-      PROJECT_V2_ID: PVT_kwHOBm66KM4ADZpE
-      TARGET_STATUS: Todo    # change to your actual Status option
+      # CHANGE these two to your setup; this avoids hardcoding the PVT_ id
+      USER_LOGIN: yizha1          # your GitHub username (project owner)
+      PROJECT_NUMBER: "1"         # the visible project number in the URL
+      TARGET_STATUS: Todo         # optional: status option to set after adding
+
     steps:
+      - name: Resolve ProjectV2 node ID from number
+        id: proj
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PROJECTS_TOKEN }}   # PAT with Projects:RW
+          script: |
+            const login = process.env.USER_LOGIN;
+            const number = parseInt(process.env.PROJECT_NUMBER, 10);
+            const query = `
+              query($login:String!, $number:Int!) {
+                user(login:$login) {
+                  projectV2(number:$number) { id title }
+                }
+              }`;
+            const resp = await github.graphql(query, { login, number });
+            const id = resp?.user?.projectV2?.id;
+            if (!id) core.setFailed(`Could not find ProjectV2 for user=${login} number=${number}`);
+            core.setOutput('project_id', id);
+            core.info(`Project resolved: ${resp.user.projectV2.title} (${id})`);
+
       - name: Resolve issue node ID
         id: issue
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}   # repo-scoped is fine for reading the issue
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             let issueNumber = (context.eventName === 'workflow_dispatch')
               ? parseInt(core.getInput('issue'), 10)
@@ -41,52 +64,66 @@ jobs:
             core.setOutput('number', String(issueNumber));
             core.setOutput('node_id', issue.node_id);
 
-      - name: Add item to Project V2 (uses PAT with Projects:RW)
+      - name: Add item to Project V2
         id: add
         uses: actions/github-script@v7
+        env:
+          PROJECT_ID: ${{ steps.proj.outputs.project_id }}
         with:
-          github-token: ${{ secrets.PROJECTS_TOKEN }}  # <-- your PAT with Projects: Read & write
+          github-token: ${{ secrets.PROJECTS_TOKEN }}  # PAT with Projects:RW
           script: |
-            const projectId = process.env.PROJECT_V2_ID;
+            const projectId = process.env.PROJECT_ID;
             const issueNodeId = "${{ steps.issue.outputs.node_id }}";
             const mutation = `
-              mutation($project:ID!,$content:ID!){
-                addProjectV2ItemById(input:{projectId:$project, contentId:$content}) {
+              mutation($project:ID!, $content:ID!) {
+                addProjectV2ItemById(input:{ projectId:$project, contentId:$content }) {
                   item { id }
                 }
               }`;
             const result = await github.graphql(mutation, { project: projectId, content: issueNodeId });
             core.setOutput('item_id', result.addProjectV2ItemById.item.id);
+            core.info(`Added item: ${JSON.stringify(result)}`);
 
       - name: Set Status field (optional)
-        if: steps.add.outputs.item_id != ''
+        if: steps.add.outputs.item_id != '' && env.TARGET_STATUS != ''
         uses: actions/github-script@v7
+        env:
+          PROJECT_ID: ${{ steps.proj.outputs.project_id }}
         with:
           github-token: ${{ secrets.PROJECTS_TOKEN }}  # same PAT
           script: |
-            const projectId = process.env.PROJECT_V2_ID;
+            const projectId = process.env.PROJECT_ID;
             const itemId = "${{ steps.add.outputs.item_id }}";
             const targetStatus = process.env.TARGET_STATUS;
 
+            // 1) Fetch fields and find 'Status' + option id
             const fieldsQuery = `
               query($project:ID!) {
                 node(id:$project) {
                   ... on ProjectV2 {
-                    fields(first: 50) {
+                    fields(first:50) {
                       nodes {
-                        ... on ProjectV2SingleSelectField { id name options { id name } }
+                        ... on ProjectV2SingleSelectField {
+                          id name options { id name }
+                        }
                       }
                     }
                   }
                 }
               }`;
             const f = await github.graphql(fieldsQuery, { project: projectId });
-            const statusField = f.node.fields.nodes.find(n => n.name === 'Status');
-            if (!statusField) return;
-
+            const statusField = f.node.fields.nodes.find(n => n?.name === 'Status' && n?.options);
+            if (!statusField) {
+              core.info('No Status field found; skipping.');
+              return;
+            }
             const opt = statusField.options.find(o => o.name === targetStatus);
-            if (!opt) return;
+            if (!opt) {
+              core.info(`Status '${targetStatus}' not found. Options: ${statusField.options.map(o=>o.name).join(', ')}`);
+              return;
+            }
 
+            // 2) Update Status
             const updateMutation = `
               mutation($project:ID!, $item:ID!, $field:ID!, $option:String!) {
                 updateProjectV2ItemFieldValue(
@@ -96,21 +133,24 @@ jobs:
                     fieldId:$field,
                     value:{ singleSelectOptionId:$option }
                   }
-                ){ projectV2Item { id } }
+                ) { projectV2Item { id } }
               }`;
             await github.graphql(updateMutation, {
               project: projectId, item: itemId, field: statusField.id, option: opt.id
             });
+            core.info(`Status set to '${targetStatus}'.`);
 
       - name: Comment confirmation
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}  # comment back on the issue
-          script: |
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: parseInt("${{ steps.issue.outputs.number }}", 10),
-              body: `✅ Added to Project (ID: ${process.env.PROJECT_V2_ID})` +
-                    (process.env.TARGET_STATUS ? `, Status: **${process.env.TARGET_STATUS}**.` : '.')
-            })
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          PROJECT_ID: ${{ steps.proj.outputs.project_id }}
+        script: |
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: parseInt("${{ steps.issue.outputs.number }}", 10),
+            body: `✅ Added to Project (ID: ${process.env.PROJECT_ID})` +
+                  (process.env.TARGET_STATUS ? `, Status: **${process.env.TARGET_STATUS}**.` : '.')
+          })

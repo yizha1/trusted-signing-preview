@@ -12,7 +12,7 @@ on:
 # remove the invalid 'projects' key; leave minimal required perms for GITHUB_TOKEN
 permissions:
   contents: read
-  issues: read
+  issues: write
 
 jobs:
   add-to-project:

@@ -22,6 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PROJECT_V2_ID: PVT_kwHOBm66KM4BEdep
+      PROJECT_V2_NAME: yizha1roadmap
       TARGET_STATUS: Todo    # change to your actual Status option
     steps:
       - name: Resolve issue node ID
@@ -111,6 +112,6 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: parseInt("${{ steps.issue.outputs.number }}", 10),
-              body: `✅ Added to Project (ID: ${process.env.PROJECT_V2_ID})` +
+              body: `✅ Added to Project (ID: ${process.env.PROJECT_V2_NAME})` +
                     (process.env.TARGET_STATUS ? `, Status: **${process.env.TARGET_STATUS}**.` : '.')
             })
